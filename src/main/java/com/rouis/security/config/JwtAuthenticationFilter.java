@@ -5,10 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,54 +18,52 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor //creer constructeur avec les attributs FINAL
+@RequiredArgsConstructor // create constructor with attribute's FINAL
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private final  UserDetailsService userDetailsService;
-    private final JwtService jwtService ;
+
+    private final UserDetailsService userDetailsService;
+    private final JwtService jwtService;
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        //le bearer token se trouve dans le Header du request , donc on va le picker du header
+        // the bearer token is in the Header of the request ,we will choose it in the header
         final String authHeader = request.getHeader("Authorization");
-        //jwt c est le token
+        //jwt is the token
         final String jwt;
         final String userEmail;
 
-        if(authHeader==null || !authHeader.startsWith("Bearer ")){
-            //on passe au deuxieme filtre
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // we go to the second filter
             filterChain.doFilter(request, response);
-            //on abondonne tout
+            // we give everything away
             return;
         }
         //Extract the token
-        jwt=authHeader.substring(7);
-        //extract the user email from jwt token---->j ai besoin d dppeler une classe
-        //qui manimule les tokens c est la classe JwtService
-        //JwtService c est la clsse qui me permet d extraire les infos qui se trouvent dans le token
+        jwt = authHeader.substring(7);
+        // extract the user email from jwt token ,so I need to call a class
+        // which manages the tokens is the JwtService class
+        // JwtService is the class that allows me to extract the information that are in the token
 
-        userEmail=jwtService.extractUserName(jwt);
-        // lorsque SecurityContextHolder.getContext().getAuthentication()==null  cela veut dire que l utulisateur n est
-        //pas connecté encore
-        if(userEmail!=null && SecurityContextHolder.getContext().getAuthentication()==null){
-            UserDetails userDetails=this.userDetailsService.loadUserByUsername(userEmail);
-           //si le token est valid
-            if(jwtService.isTokenValid(jwt, userDetails)){//update the security context and send request to distatcher
+        userEmail = jwtService.extractUserName(jwt);
+        // when SecurityContextHolder.getContext().getAuthentication()==null,
+        // it means that the user is not yet logged in.
+        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            //if the token is valid
+            if (jwtService.isTokenValid(jwt, userDetails)) {
+                //Update the security context and send the request to the controller
 
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken
+                                (userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 //update security context holder
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
             filterChain.doFilter(request, response);
         }
-           // UserDetails userDetails=this
-
+        // UserDetails userDetails=this
     }
 }
